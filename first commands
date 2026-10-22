@@ -1,0 +1,530 @@
+# Docker & Linux Command Cheat Sheet 🐳🐧
+
+A practical reference for managing Docker containers and performing essential Linux administration tasks inside containers.
+
+**Environment:** Docker Desktop on Windows + Debian 12 (Bookworm)
+
+**Example container:** `debian-lab`
+
+---
+
+# Part 1 — Linux Commands Inside Docker
+
+> Run these commands inside the Linux container unless otherwise specified.
+
+## 1. File and Directory Management
+
+```bash
+# Display the current directory
+pwd
+
+# List files and directories
+ls -lah
+
+# Change the current directory
+cd /root
+cd /
+cd -
+
+# Create directories
+mkdir -p /root/labs
+
+# Create an empty file
+touch /root/labs/notes.txt
+
+# Copy a file
+cp /root/labs/notes.txt /root/labs/notes-backup.txt
+
+# Rename or move a file
+mv /root/labs/notes-backup.txt /root/labs/backup.txt
+
+# Remove a file
+rm /root/labs/backup.txt
+```
+
+**Key points:**
+
+* `pwd` displays the current working directory.
+* `ls -lah` lists files, including hidden files, with readable sizes.
+* `mkdir -p` creates parent directories when necessary.
+* `rm` permanently removes files; verify paths before executing it.
+
+## 2. Reading Files
+
+```bash
+# Display an entire file
+cat /etc/os-release
+
+# Display the first 10 lines
+head /etc/os-release
+
+# Display the last 10 lines
+tail /etc/os-release
+
+# Follow a file as new lines are added
+tail -f /var/log/syslog
+
+# Read a file interactively
+less /etc/os-release
+```
+
+**Use cases:** Configuration inspection, log analysis, and troubleshooting.
+
+Note: `/var/log/syslog` may not exist in a minimal Debian container.
+
+## 3. Finding Files and Searching Text
+
+```bash
+# Find configuration files
+find /etc -type f -name "*.conf"
+
+# Find files under /root/labs
+find /root/labs -type f
+
+# Search for a string inside a file
+grep "error" /etc/os-release
+
+# Search recursively in a directory
+grep -Rni "password" /etc 2>/dev/null
+
+# Find matching processes
+ps aux | grep bash
+```
+
+**Useful options:**
+
+* `-R`: Recursive search.
+* `-n`: Display line numbers.
+* `-i`: Case-insensitive search.
+* `2>/dev/null`: Suppress error messages written to standard error.
+
+## 4. Process Management
+
+```bash
+# Display running processes
+ps aux
+
+# Interactive process monitoring
+top
+
+# Display processes matching a pattern
+pgrep -a bash
+
+# Display information about the current shell
+echo $$
+```
+
+Inside a container, process visibility is generally limited to processes visible within that container's process namespace.
+
+## 5. Network Inspection
+
+```bash
+# Display network interfaces and IP addresses
+ip addr
+
+# Display routing information
+ip route
+
+# Display listening TCP and UDP sockets
+ss -tuln
+
+# Test connectivity
+ping -c 3 8.8.8.8
+
+# Test HTTP connectivity
+curl -I https://example.com
+
+# Display DNS resolver configuration
+cat /etc/resolv.conf
+```
+
+**Key points:**
+
+* `ip addr` displays interface addresses.
+* `ip route` displays the routing table.
+* `ss -tuln` lists listening TCP and UDP sockets.
+* `curl -I` sends an HTTP HEAD request and displays response headers.
+
+## 6. Disk and Memory Usage
+
+```bash
+# Display filesystem disk usage
+df -h
+
+# Display the size of a directory
+du -sh /root
+
+# Display memory information
+free -h
+
+# Display system uptime
+uptime
+```
+
+Resource information reported inside a container may differ from the host's overall resources, depending on Docker configuration and imposed limits.
+
+## 7. Package Management
+
+```bash
+# Refresh package indexes
+apt update
+
+# Install common utilities
+apt install -y curl wget nano vim iproute2 iputils-ping procps net-tools
+
+# List installed packages
+apt list --installed
+
+# Search for a package
+apt search package-name
+
+# Display package information
+apt show curl
+```
+
+Run package-management commands with appropriate privileges. The example Debian container uses the root account.
+
+## 8. File Permissions and Ownership
+
+```bash
+# Display file permissions
+ls -l /root/labs
+
+# Change file permissions
+chmod 640 /root/labs/notes.txt
+
+# Change file ownership
+chown root:root /root/labs/notes.txt
+
+# Display the current user
+whoami
+
+# Display user and group IDs
+id
+```
+
+**Permission reference:**
+
+| Permission    | Value |
+| ------------- | ----: |
+| Read (`r`)    |     4 |
+| Write (`w`)   |     2 |
+| Execute (`x`) |     1 |
+
+For example, `chmod 640 file.txt` gives the owner read/write access, the group read access, and others no permissions.
+
+---
+
+# Part 2 — Docker Container Management
+
+> Run these commands in Windows PowerShell or CMD, unless otherwise specified.
+
+## 9. Check Docker Installation and Status
+
+```powershell
+# Display the Docker CLI version
+docker --version
+
+# Display client and server versions
+docker version
+
+# Display Docker Engine information
+docker info
+
+# Check Docker Compose
+docker compose version
+```
+
+`docker info` also helps determine whether the Docker Engine is reachable.
+
+## 10. List Containers
+
+```powershell
+# List running containers
+docker ps
+
+# List all containers, including stopped ones
+docker ps -a
+
+# Display only running container IDs
+docker ps -q
+```
+
+## 11. Start, Stop, and Restart Containers
+
+```powershell
+# Start a stopped container
+docker start debian-lab
+
+# Stop a running container
+docker stop debian-lab
+
+# Restart a container
+docker restart debian-lab
+```
+
+Stopping a container does not normally delete its writable layer.
+
+## 12. Access a Container
+
+```powershell
+# Create and start a Debian container interactively
+docker run -it --name debian-lab debian:bookworm bash
+
+# Start the existing container and attach to its main process
+docker start -ai debian-lab
+
+# Open a new Bash session in a running container
+docker exec -it debian-lab bash
+
+# Execute a command inside a running container
+docker exec debian-lab cat /etc/os-release
+```
+
+**Important differences:**
+
+* `docker run` creates a new container.
+* `docker start -ai` starts an existing stopped container and attaches to its main process.
+* `docker exec -it` starts a separate interactive process inside a running container.
+
+## 13. View Container Logs
+
+```powershell
+# Display container logs
+docker logs debian-lab
+
+# Follow new log entries
+docker logs -f debian-lab
+
+# Display the last 50 lines
+docker logs --tail 50 debian-lab
+
+# Display logs from the last 30 minutes
+docker logs --since 30m debian-lab
+```
+
+Docker logs generally capture the main process's standard output and standard error, not every command executed through `docker exec`.
+
+## 14. Inspect Container Configuration
+
+```powershell
+# Display detailed container configuration
+docker inspect debian-lab
+
+# Display the container's current state
+docker inspect --format='{{.State.Status}}' debian-lab
+
+# Display its exit code
+docker inspect --format='{{.State.ExitCode}}' debian-lab
+
+# Display its IP address
+docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' debian-lab
+```
+
+Inspection can reveal network settings, mounts, environment variables, runtime state, and other configuration details.
+
+Avoid sharing inspection output without reviewing it for sensitive information.
+
+## 15. Monitor Resource Usage
+
+```powershell
+# Monitor running containers
+docker stats
+
+# Monitor a specific container
+docker stats debian-lab
+
+# Display processes inside a container
+docker top debian-lab
+```
+
+Use `docker stats` to monitor CPU, memory, network I/O, and block I/O.
+
+## 16. Manage Images
+
+```powershell
+# List local images
+docker images
+
+# Download an image
+docker pull debian:bookworm
+
+# Inspect an image
+docker image inspect debian:bookworm
+
+# Display image build history
+docker history debian:bookworm
+
+# Remove an image
+docker rmi IMAGE_ID
+```
+
+An image is a template used to create containers. A container's writable layer is separate from the image.
+
+An image cannot normally be removed while a container still references it.
+
+## 17. Manage Docker Networks
+
+```powershell
+# List networks
+docker network ls
+
+# Inspect a network
+docker network inspect bridge
+
+# Create a user-defined bridge network
+docker network create lab-network
+
+# Connect a running container
+docker network connect lab-network debian-lab
+
+# Disconnect a container
+docker network disconnect lab-network debian-lab
+
+# Remove a network
+docker network rm lab-network
+```
+
+User-defined bridge networks support communication between connected containers and provide container-name DNS resolution.
+
+## 18. Manage Docker Volumes
+
+```powershell
+# List volumes
+docker volume ls
+
+# Create a named volume
+docker volume create lab-data
+
+# Inspect a volume
+docker volume inspect lab-data
+
+# Remove a volume
+docker volume rm lab-data
+```
+
+Mount a named volume into a container:
+
+```powershell
+docker run -it --name debian-volume --mount source=lab-data,target=/data debian:bookworm bash
+```
+
+Volumes allow data to persist independently of a container's lifecycle.
+
+**Warning:** Removing a volume deletes its stored data. Verify that the volume is no longer needed before deleting it.
+
+## 19. Remove Unused Docker Resources
+
+```powershell
+# Display Docker disk usage
+docker system df
+
+# Remove stopped containers
+docker container prune
+
+# Remove dangling images
+docker image prune
+
+# Remove unused networks
+docker network prune
+
+# Remove unused build cache
+docker builder prune
+```
+
+Review the resources affected before confirming cleanup operations.
+
+The following command is more aggressive:
+
+```powershell
+docker system prune -a
+```
+
+It can remove unused images in addition to other eligible resources.
+
+Avoid adding `--volumes` unless you have reviewed the potential data loss.
+
+## 20. Publish Container Ports
+
+```powershell
+# Run Nginx and publish container port 80 on host port 8080
+docker run -d --name web-server -p 127.0.0.1:8080:80 nginx:alpine
+
+# Display published ports
+docker port web-server
+
+# Inspect container port configuration
+docker inspect --format='{{json .NetworkSettings.Ports}}' web-server
+```
+
+Open the following address on the Docker host:
+
+`http://localhost:8080`
+
+The mapping format is:
+
+`HOST_PORT:CONTAINER_PORT`
+
+Binding to `127.0.0.1` limits the published port to the host's IPv4 loopback interface.
+
+---
+
+# Part 3 — Troubleshooting Quick Reference
+
+| Problem                             | Command                               |
+| ----------------------------------- | ------------------------------------- |
+| Docker Engine is unreachable        | `docker info`                         |
+| Container is stopped                | `docker ps -a`                        |
+| Container exits unexpectedly        | `docker logs CONTAINER_NAME`          |
+| Need detailed configuration         | `docker inspect CONTAINER_NAME`       |
+| Need to enter a running container   | `docker exec -it CONTAINER_NAME bash` |
+| Need to check resource consumption  | `docker stats`                        |
+| Need to check disk usage            | `docker system df`                    |
+| Need to check network configuration | `docker network ls`                   |
+| Need to check mounted volumes       | `docker inspect CONTAINER_NAME`       |
+| Need to check published ports       | `docker port CONTAINER_NAME`          |
+
+---
+
+# Part 4 — Essential Docker Concepts
+
+| Concept        | Description                                                   |
+| -------------- | ------------------------------------------------------------- |
+| Image          | A template used to create containers                          |
+| Container      | An isolated runtime instance created from an image            |
+| Volume         | Persistent storage managed by Docker                          |
+| Bind mount     | A mapping between a host path and a container path            |
+| Network        | A mechanism for connecting containers                         |
+| Dockerfile     | Instructions for building an image                            |
+| Docker Compose | A tool for defining and managing multi-container applications |
+| Port mapping   | Forwarding traffic from a host port to a container port       |
+| Docker Engine  | The service responsible for managing Docker resources         |
+
+---
+
+# Part 5 — Security Best Practices
+
+* Avoid running containers in privileged mode unless required.
+* Avoid exposing the Docker daemon to untrusted networks.
+* Never mount the Docker socket into untrusted containers.
+* Prefer trusted, maintained images.
+* Avoid hardcoding passwords and API tokens in images or source-controlled files.
+* Use resource limits where appropriate.
+* Apply the principle of least privilege.
+* Review published ports and mounted host directories.
+* Remember that containers share the host kernel and are not equivalent to full virtual machines.
+
+---
+
+# Official Documentation
+
+* Docker Engine: https://docs.docker.com/engine/
+* Docker CLI Reference: https://docs.docker.com/reference/cli/docker/
+* Docker Networking: https://docs.docker.com/engine/network/
+* Docker Storage: https://docs.docker.com/engine/storage/
+* Docker Compose: https://docs.docker.com/compose/
+* Dockerfile Reference: https://docs.docker.com/reference/dockerfile/
+
+---
+
+**Purpose:** Linux administration, Docker management, troubleshooting, and cybersecurity lab development.
