@@ -1,0 +1,851 @@
+محمد، برای گیت‌هاب پیشنهاد می‌کنم یه **Docker Cheat Sheet** بسازی که از دستورات پایه شروع بشه و تا مدیریت حرفه‌ای کانتینرها، شبکه، Volume و Docker Compose پیش بره. به‌درد کار لینوکسی و مسیر امنیت سایبری‌ات هم می‌خوره.
+
+این نسخه رو به‌صورت یک فایل Markdown با نام `Docker-Cheatsheet.md` ذخیره کن و توی ریپازیتوری گیت‌هابت قرار بده.
+
+# Docker Cheat Sheet 🐳
+
+### Beginner to Advanced | Commands, Examples & Administration
+
+A practical reference for managing Docker images, containers, networks, volumes, logs, and Docker Compose.
+
+**Environment:** Linux / Windows PowerShell
+**Example container:** `debian-lab`
+**Example image:** `debian:bookworm`
+
+---
+
+# 1. Docker Basics
+
+## 1.1 Check Docker Installation
+
+```bash
+docker --version
+docker version
+docker info
+```
+
+* `docker --version` — Displays the Docker CLI version.
+* `docker version` — Displays client and server versions.
+* `docker info` — Shows Docker Engine configuration and system information.
+
+## 1.2 Check Docker Status
+
+### Linux with systemd
+
+```bash
+sudo systemctl status docker
+sudo systemctl start docker
+sudo systemctl stop docker
+sudo systemctl restart docker
+```
+
+### Windows
+
+Open Docker Desktop from the Start menu.
+
+Check whether the Docker Engine is responding:
+
+```powershell
+docker info
+```
+
+## 1.3 Test Docker
+
+```bash
+docker run hello-world
+```
+
+Downloads and runs a test container if necessary.
+
+---
+
+# 2. Working with Docker Images
+
+An image is a template used to create containers.
+
+## 2.1 Download Images
+
+```bash
+docker pull debian:bookworm
+docker pull ubuntu:24.04
+docker pull alpine:latest
+```
+
+## 2.2 List Images
+
+```bash
+docker images
+docker image ls
+```
+
+## 2.3 Inspect an Image
+
+```bash
+docker image inspect debian:bookworm
+```
+
+Displays image metadata, configuration, and other details.
+
+## 2.4 Remove Images
+
+```bash
+docker rmi IMAGE_NAME
+docker image rm IMAGE_ID
+```
+
+Example:
+
+```bash
+docker rmi alpine:latest
+```
+
+An image cannot normally be removed while a container still references it.
+
+## 2.5 Image History
+
+```bash
+docker history debian:bookworm
+```
+
+Shows the image's recorded build layers and commands.
+
+## 2.6 Build an Image
+
+```bash
+docker build -t my-linux:1.0 .
+```
+
+Builds an image using the `Dockerfile` in the current directory.
+
+---
+
+# 3. Container Management
+
+A container is an instance of an image.
+
+## 3.1 Create and Start a Container
+
+```bash
+docker run -it --name debian-lab debian:bookworm bash
+```
+
+Explanation:
+
+* `run` — Creates and starts a container.
+* `-i` — Keeps standard input open.
+* `-t` — Allocates a terminal.
+* `--name` — Assigns a container name.
+* `debian:bookworm` — Specifies the image.
+* `bash` — Starts the Bash shell.
+
+## 3.2 Run a Container in the Background
+
+```bash
+docker run -d --name web-server nginx:alpine
+```
+
+The `-d` option runs the container in detached mode.
+
+## 3.3 List Containers
+
+```bash
+docker ps
+docker ps -a
+docker ps -q
+docker container ls
+```
+
+* `docker ps` — Running containers.
+* `docker ps -a` — All containers, including stopped ones.
+* `docker ps -q` — IDs of running containers only.
+
+## 3.4 Start and Stop Containers
+
+```bash
+docker start debian-lab
+docker stop debian-lab
+docker restart debian-lab
+```
+
+## 3.5 Remove Containers
+
+```bash
+docker rm debian-lab
+docker rm -f debian-lab
+```
+
+* `docker rm` — Removes a stopped container.
+* `docker rm -f` — Forcefully stops and removes a container.
+
+**Warning:** Removing a container can destroy data stored only in its writable layer.
+
+## 3.6 Execute Commands Inside a Container
+
+```bash
+docker exec -it debian-lab bash
+docker exec debian-lab cat /etc/os-release
+docker exec debian-lab whoami
+```
+
+`docker exec` runs a new process inside an existing, running container.
+
+## 3.7 Attach to a Container
+
+```bash
+docker attach debian-lab
+```
+
+Attaches your terminal to the container's main process.
+
+Prefer `docker exec -it` when you need a separate shell.
+
+## 3.8 Container Details
+
+```bash
+docker inspect debian-lab
+docker container inspect debian-lab
+```
+
+Inspect configuration, network information, mounts, environment variables, and runtime state.
+
+## 3.9 Container Resource Usage
+
+```bash
+docker stats
+docker stats debian-lab
+docker top debian-lab
+```
+
+* `docker stats` — Live CPU, memory, network, and block I/O statistics.
+* `docker top` — Processes running inside a container.
+
+---
+
+# 4. Logs and Troubleshooting
+
+## 4.1 View Logs
+
+```bash
+docker logs debian-lab
+docker logs -f debian-lab
+docker logs --tail 100 debian-lab
+docker logs --since 30m debian-lab
+docker logs -t debian-lab
+```
+
+* `-f` — Follow new log entries.
+* `--tail 100` — Show the last 100 lines.
+* `--since 30m` — Show logs from the last 30 minutes.
+* `-t` — Include timestamps.
+
+## 4.2 Check Exit Codes
+
+```bash
+docker inspect --format='{{.State.ExitCode}}' debian-lab
+```
+
+Displays the container's recorded exit code.
+
+## 4.3 Check Container State
+
+```bash
+docker inspect --format='{{.State.Status}}' debian-lab
+```
+
+Possible results include `running`, `exited`, and `created`.
+
+## 4.4 View Docker Events
+
+```bash
+docker events
+docker events --since 10m
+```
+
+Displays Docker Engine events, such as container creation, starts, stops, and image operations.
+
+## 4.5 Diagnose a Container
+
+```bash
+docker ps -a
+docker logs debian-lab
+docker inspect debian-lab
+docker stats
+docker system df
+```
+
+These commands help investigate stopped containers, application failures, resource consumption, and disk usage.
+
+---
+
+# 5. Port Mapping
+
+Port mapping allows traffic reaching a host port to be forwarded to a container port.
+
+## 5.1 Publish a Port
+
+```bash
+docker run -d --name web-server -p 8080:80 nginx:alpine
+```
+
+Open the following address on the Docker host:
+
+`http://localhost:8080`
+
+The mapping is:
+
+`HOST_PORT:CONTAINER_PORT`
+
+## 5.2 List Published Ports
+
+```bash
+docker port web-server
+```
+
+## 5.3 Inspect Network Settings
+
+```bash
+docker inspect --format='{{json .NetworkSettings.Ports}}' web-server
+```
+
+**Security note:** Publishing a port can expose a service beyond your local machine, depending on the host and network configuration.
+
+To bind a service to the host's IPv4 loopback interface only:
+
+```bash
+docker run -d --name local-web -p 127.0.0.1:8080:80 nginx:alpine
+```
+
+---
+
+# 6. Docker Volumes and Data Persistence
+
+Volumes store data independently of a container's writable layer.
+
+## 6.1 List Volumes
+
+```bash
+docker volume ls
+```
+
+## 6.2 Create a Volume
+
+```bash
+docker volume create lab-data
+```
+
+## 6.3 Inspect a Volume
+
+```bash
+docker volume inspect lab-data
+```
+
+## 6.4 Mount a Volume
+
+```bash
+docker run -it --name debian-volume \
+  --mount source=lab-data,target=/data \
+  debian:bookworm bash
+```
+
+Inside the container:
+
+```bash
+echo "Persistent Docker data" > /data/test.txt
+cat /data/test.txt
+exit
+```
+
+Remove the container:
+
+```bash
+docker rm debian-volume
+```
+
+Create a new container using the same volume:
+
+```bash
+docker run --rm \
+  --mount source=lab-data,target=/data \
+  debian:bookworm cat /data/test.txt
+```
+
+The file should still exist.
+
+## 6.5 Remove Volumes
+
+```bash
+docker volume rm lab-data
+```
+
+**Warning:** Removing a volume permanently deletes the data stored in it.
+
+## 6.6 Bind Mounts
+
+A bind mount maps an existing host path into a container.
+
+Example for Linux:
+
+```bash
+docker run --rm -it \
+  --mount type=bind,source=/tmp/docker-lab,target=/lab \
+  debian:bookworm bash
+```
+
+Create the host directory first:
+
+```bash
+mkdir -p /tmp/docker-lab
+```
+
+Bind mounts can provide containers with access to host files. Avoid mounting sensitive host directories unless required.
+
+---
+
+# 7. Docker Networking
+
+## 7.1 List Networks
+
+```bash
+docker network ls
+```
+
+## 7.2 Inspect a Network
+
+```bash
+docker network inspect bridge
+```
+
+## 7.3 Create a Network
+
+```bash
+docker network create lab-network
+```
+
+## 7.4 Run Containers on a Network
+
+```bash
+docker run -dit --name lab1 --network lab-network debian:bookworm bash
+docker run -dit --name lab2 --network lab-network debian:bookworm bash
+```
+
+Install ping in the containers if needed:
+
+```bash
+docker exec lab1 apt-get update
+docker exec lab1 apt-get install -y iputils-ping
+```
+
+Test connectivity:
+
+```bash
+docker exec lab1 ping -c 3 lab2
+```
+
+On a user-defined bridge network, containers can normally resolve each other by container name.
+
+## 7.5 Connect and Disconnect Containers
+
+```bash
+docker network connect lab-network debian-lab
+docker network disconnect lab-network debian-lab
+```
+
+## 7.6 Remove a Network
+
+```bash
+docker network rm lab-network
+```
+
+The network must not have connected containers.
+
+---
+
+# 8. Docker Resource Management
+
+## 8.1 Check Disk Usage
+
+```bash
+docker system df
+docker system df -v
+```
+
+Displays Docker disk usage, including images, containers, and volumes.
+
+## 8.2 Remove Stopped Containers
+
+```bash
+docker container prune
+```
+
+## 8.3 Remove Unused Images
+
+```bash
+docker image prune
+docker image prune -a
+```
+
+* `docker image prune` — Removes dangling images.
+* `docker image prune -a` — Removes images not referenced by any container.
+
+## 8.4 Remove Unused Networks
+
+```bash
+docker network prune
+```
+
+## 8.5 Remove Unused Build Cache
+
+```bash
+docker builder prune
+```
+
+## 8.6 General Cleanup
+
+```bash
+docker system prune
+```
+
+Removes unused containers, networks, dangling images, and build cache.
+
+More aggressive cleanup:
+
+```bash
+docker system prune -a
+```
+
+Include unused volumes:
+
+```bash
+docker system prune --volumes
+```
+
+**Warning:** Cleanup commands can remove resources you intended to keep. Review what will be deleted before confirming.
+
+---
+
+# 9. Restart Policies
+
+Restart policies control whether Docker attempts to restart a container.
+
+## 9.1 Common Policies
+
+```bash
+docker run -d --restart no nginx:alpine
+docker run -d --restart on-failure nginx:alpine
+docker run -d --restart unless-stopped nginx:alpine
+docker run -d --restart always nginx:alpine
+```
+
+* `no` — Do not automatically restart.
+* `on-failure` — Restart after a non-zero exit, subject to the configured retry limit.
+* `unless-stopped` — Restart unless explicitly stopped.
+* `always` — Restart automatically, including after Docker restarts, subject to manual-stop behavior.
+
+## 9.2 Change a Container's Restart Policy
+
+```bash
+docker update --restart unless-stopped web-server
+```
+
+Check the configured policy:
+
+```bash
+docker inspect --format='{{.HostConfig.RestartPolicy.Name}}' web-server
+```
+
+---
+
+# 10. Environment Variables and Resource Limits
+
+## 10.1 Set Environment Variables
+
+```bash
+docker run -d \
+  --name app \
+  -e APP_ENV=development \
+  nginx:alpine
+```
+
+Inspect the container's environment:
+
+```bash
+docker exec app printenv APP_ENV
+```
+
+Avoid putting passwords, tokens, or other secrets directly in command-line arguments or source-controlled configuration files.
+
+## 10.2 Limit Memory and CPU
+
+```bash
+docker run -d \
+  --name limited-app \
+  --memory=512m \
+  --cpus=1.0 \
+  nginx:alpine
+```
+
+Limits the container to a memory limit of 512 MiB and a CPU quota equivalent to one CPU.
+
+Check live resource usage:
+
+```bash
+docker stats limited-app
+```
+
+---
+
+# 11. Docker Compose
+
+Docker Compose manages applications made up of one or more services.
+
+## 11.1 Check Compose
+
+```bash
+docker compose version
+```
+
+## 11.2 Example Compose File
+
+Create a file named `compose.yaml`:
+
+```yaml
+services:
+  web:
+    image: nginx:alpine
+    container_name: compose-web
+    ports:
+      - "127.0.0.1:8080:80"
+    restart: unless-stopped
+```
+
+## 11.3 Start Services
+
+Run from the directory containing `compose.yaml`:
+
+```bash
+docker compose up -d
+```
+
+## 11.4 List Services
+
+```bash
+docker compose ps
+```
+
+## 11.5 View Logs
+
+```bash
+docker compose logs
+docker compose logs -f
+docker compose logs --tail 100
+```
+
+## 11.6 Stop Services
+
+```bash
+docker compose stop
+```
+
+## 11.7 Stop and Remove Services
+
+```bash
+docker compose down
+```
+
+Remove containers and networks created for the Compose project.
+
+Remove associated named volumes as well:
+
+```bash
+docker compose down -v
+```
+
+**Warning:** `-v` can delete persistent application data.
+
+## 11.8 Validate Compose Configuration
+
+```bash
+docker compose config
+```
+
+Renders and validates the Compose configuration.
+
+---
+
+# 12. Dockerfile Basics
+
+A Dockerfile defines how an image is built.
+
+Example:
+
+```dockerfile
+FROM debian:bookworm
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      curl \
+      iputils-ping \
+      iproute2 && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /lab
+
+CMD ["bash"]
+```
+
+Build the image:
+
+```bash
+docker build -t debian-tools:1.0 .
+```
+
+Run a container:
+
+```bash
+docker run -it --name debian-tools-lab debian-tools:1.0
+```
+
+Common Dockerfile instructions:
+
+* `FROM` — Selects the base image.
+* `RUN` — Executes commands during image building.
+* `WORKDIR` — Sets the working directory.
+* `COPY` — Copies files into the image.
+* `ENV` — Sets environment variables.
+* `EXPOSE` — Documents the intended listening port.
+* `USER` — Selects the user used by subsequent instructions and the runtime default.
+* `CMD` — Specifies the default command or arguments.
+* `ENTRYPOINT` — Defines the main executable.
+
+`EXPOSE` does not publish a port by itself. Use `-p` or a Compose port mapping to publish one.
+
+---
+
+# 13. Security and Hardening
+
+## 13.1 Run as a Non-Root User
+
+Where supported by the image:
+
+```bash
+docker run --rm -it --user 1000:1000 debian:bookworm bash
+```
+
+The specified user may not have access to every directory or command.
+
+## 13.2 Read-Only Root Filesystem
+
+```bash
+docker run --rm -it --read-only debian:bookworm bash
+```
+
+Applications that need to write files may require writable temporary filesystems or mounted volumes.
+
+## 13.3 Drop Linux Capabilities
+
+```bash
+docker run --rm -it \
+  --cap-drop=ALL \
+  debian:bookworm bash
+```
+
+Some operations will fail because the container has fewer Linux capabilities.
+
+## 13.4 Prevent Privilege Escalation
+
+```bash
+docker run --rm -it \
+  --security-opt=no-new-privileges:true \
+  debian:bookworm bash
+```
+
+Prevents processes in the container from gaining additional privileges through mechanisms such as setuid executables.
+
+## 13.5 Check Image Vulnerabilities
+
+Docker Scout can analyze supported images when the feature is available and configured:
+
+```bash
+docker scout quickview debian:bookworm
+docker scout cves debian:bookworm
+```
+
+Availability and reporting depend on Docker Scout installation, authentication, and service access.
+
+## 13.6 Important Security Practices
+
+* Avoid running containers in privileged mode unless absolutely necessary.
+* Do not expose the Docker daemon over an unauthenticated network connection.
+* Avoid mounting the Docker socket into untrusted containers.
+* Prefer trusted, maintained images.
+* Keep images and the Docker Engine updated.
+* Use secrets management instead of hardcoding credentials.
+* Apply resource limits to workloads that need them.
+* Use read-only filesystems and drop unnecessary capabilities where practical.
+* Remember that containers share the host kernel; they are not equivalent to full virtual machines.
+
+---
+
+# 14. Useful Command Reference
+
+| Task                    | Command                     |
+| ----------------------- | --------------------------- |
+| List running containers | `docker ps`                 |
+| List all containers     | `docker ps -a`              |
+| List images             | `docker images`             |
+| Download image          | `docker pull IMAGE`         |
+| Run container           | `docker run IMAGE`          |
+| Start container         | `docker start NAME`         |
+| Stop container          | `docker stop NAME`          |
+| Restart container       | `docker restart NAME`       |
+| Remove container        | `docker rm NAME`            |
+| View logs               | `docker logs NAME`          |
+| Open shell              | `docker exec -it NAME bash` |
+| Inspect container       | `docker inspect NAME`       |
+| Monitor resources       | `docker stats`              |
+| List networks           | `docker network ls`         |
+| List volumes            | `docker volume ls`          |
+| Check disk usage        | `docker system df`          |
+| List Compose services   | `docker compose ps`         |
+| Start Compose project   | `docker compose up -d`      |
+| Stop Compose project    | `docker compose down`       |
+
+---
+
+# 15. Official Documentation
+
+* Docker Engine: [https://docs.docker.com/engine/](https://docs.docker.com/engine/)
+* Docker CLI Reference: [https://docs.docker.com/reference/cli/docker/](https://docs.docker.com/reference/cli/docker/)
+* Docker Compose: [https://docs.docker.com/compose/](https://docs.docker.com/compose/)
+* Dockerfile Reference: [https://docs.docker.com/reference/dockerfile/](https://docs.docker.com/reference/dockerfile/)
+* Docker Security: [https://docs.docker.com/engine/security/](https://docs.docker.com/engine/security/)
+* Docker Networking: [https://docs.docker.com/engine/network/](https://docs.docker.com/engine/network/)
+* Docker Storage: [https://docs.docker.com/engine/storage/](https://docs.docker.com/engine/storage/)
+
+---
+
+**Author:** Your GitHub Username
+**Purpose:** Docker administration, Linux practice, and cybersecurity lab management.
+
+---
+
+## پیشنهاد من برای ریپازیتوری گیت‌هابت
+
+بهتره بعداً مطالب رو از یک فایل بزرگ به چند فایل مجزا تقسیم کنی:
+
+```text
+docker-notes/
+├── README.md
+├── Docker-Basics.md
+├── Images-and-Containers.md
+├── Networking.md
+├── Volumes-and-Storage.md
+├── Docker-Compose.md
+├── Dockerfile.md
+├── Security-and-Hardening.md
+└── Troubleshooting.md
+```
+
+**یک نکته مهم:** اگر هدفت استفاده از Docker برای لاب‌های پن‌تست و امنیت سایبریه، بخش‌های Networking، Volumes، Dockerfile و Security رو جدی‌تر یاد بگیر. این‌ها هم برای ساخت محیط آزمایشگاهی کاربرد دارن و هم برای درک سطح حمله و ریسک‌های Docker.
+
+برای مستندات رسمی و به‌روز هم از [Docker Documentation](https://docs.docker.com/?utm_source=chatgpt.com) استفاده کن.
