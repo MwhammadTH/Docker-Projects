@@ -1,0 +1,132 @@
+اجرا
+docker compose up -d --build
+
+داخل پاورشل وارد Ubuntu بشیم
+
+wsl -d Ubuntu -u UserName --cd ~
+
+cd ~/projects/web-security-lab
+
+
+
+
+
+if you wanna start again :
+
+
+
+۱. ساخت محیط PHP و Apache
+bash
+cat > docker/apache/Dockerfile <<'EOF'
+FROM php:8.3-apache
+
+RUN docker-php-ext-install pdo_mysql
+
+COPY docker/apache/site.conf /etc/apache2/sites-available/000-default.conf
+EOF
+
+تنظیم Apache: فقط پوشهٔ public از مرورگر قابل دسترسی باشد.
+
+bash
+cat > docker/apache/site.conf <<'EOF'
+<VirtualHost *:80>
+    DocumentRoot /var/www/html/public
+
+    <Directory /var/www/html/public>
+        Options -Indexes
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    ErrorLog /proc/self/fd/2
+    CustomLog /proc/self/fd/1 combined
+</VirtualHost>
+EOF
+
+
+۲. تنظیم Docker Compose
+این بلوک محتوای فایل خالی compose.yaml را می‌نویسد:
+
+bash
+cat > compose.yaml <<'EOF'
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/apache/Dockerfile
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_NAME: lab
+      DB_USER: lab
+      DB_PASSWORD: local_lab_password
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: lab
+      MARIADB_USER: lab
+      MARIADB_PASSWORD: local_lab_password
+      MARIADB_ROOT_PASSWORD: local_root_password
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  db_data:
+EOF
+معنی ساده:
+
+web: اجرای PHP و Apache؛ پورت وب فقط روی سیستم خودت منتشر می‌شود.
+db: دیتابیس؛ هیچ پورتی روی ویندوز منتشر نمی‌کند.
+db_data: نگهداری داده‌های دیتابیس بعد از حذف کانتینر.
+این رمزها فقط برای آزمایشگاه محلی‌اند؛ رمز واقعی یا مشترک با حساب‌هایت استفاده نکن.
+
+
+
+
+
+
+
+۳. اولین صفحهٔ PHP
+bash
+cat > public/index.php <<'EOF'
+<?php
+header('Content-Type: text/plain; charset=utf-8');
+
+echo "PHP is working!\n";
+
+try {
+    $pdo = new PDO(
+        'mysql:host=' . getenv('DB_HOST') . ';dbname=' . getenv('DB_NAME') . ';charset=utf8mb4',
+        getenv('DB_USER'),
+        getenv('DB_PASSWORD'),
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+    $pdo->query('SELECT 1');
+    echo "Database connection OK!\n";
+} catch (PDOException $e) {
+    http_response_code(500);
+    error_log($e->getMessage());
+    echo "Database connection failed. Check logs.\n";
+}
+EOF
+۴. اجرا
+bash
+docker compose up -d --build
+بار اول دانلود و ساخت محیط ممکن است چند دقیقه طول بکشد. اگر خطا داد، متنش را بفرست.
+
+بعد از اتمام:
+
+
